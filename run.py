@@ -2,11 +2,9 @@
 
 import argparse
 from sys import exit, stderr
-from os import path, listdir, mkdir, rename, stat, remove
-from timeit import default_timer as timer
-from time import strftime, gmtime
+from os import path, listdir, mkdir, rename, remove
 from subprocess import call
-from shutil import rmtree
+from shutil import rmtree, copyfile
 
 def checkEoS():
     if not path.exists(path.abspath("eos")):
@@ -15,7 +13,8 @@ def checkEoS():
     if not path.exists(path.abspath("eos/eos.py")):
         print("Error: no eos.py file. Aborting...", file=stderr)
         exit()
-    call("python3 eos.py --Tmin=0.01 --Tmax=2.00 > eos.dat", shell=True, cwd=path.abspath("eos"))
+    if not path.exists(path.abspath("eos/eos.dat")):
+        call("python3 eos.py --Tmin=0.01 --Tmax=2.00 > eos.dat", shell=True, cwd=path.abspath("eos"))
     if not path.exists(path.abspath("eos/eos.dat")):
         print("Error: no eos file. Aborting...", file=stderr)
         exit()
@@ -40,6 +39,19 @@ def runPsin(recompile, nThreads, nRange):
     command  = f"export OMP_NUM_THREADS={nThreads:d}; "
     command += f"./psin --n={nRange} --eventN={eventN:d}"
     call(command, shell=True, cwd=path.abspath(""))
+
+def runEpsn(collsys, colleng, p, tau0, etas, centrality, recompile, nThreads):
+    psinDir = path.abspath("results")
+    psinDir = path.join(psinDir, f"results_{collsys}_{colleng}_etas_{etas}_p={p:.2f}_tau0={tau0:.1f}")
+    psinDir = path.join(psinDir, f"results_centrality={centrality}")
+    if not path.exists(path.join(psinDir, "psin.dat")):
+        print("Error: could not find Psin file. Aborting...", file=stderr)
+        exit()
+    copyfile(path.join(psinDir, "psin.dat"), path.abspath("psin.dat"))
+    if not path.exists(path.abspath("epsn")) or recompile:
+        call("g++ cepsn/*.cpp -Wall -fopenmp -O3 -o epsn", shell=True, cwd=path.abspath(""))
+    call(f"export OMP_NUM_THREADS={nThreads:d}; ./epsn", shell=True, cwd=path.abspath(""))
+    remove(path.abspath("psin.dat"))
 
 def moveResults(collsys, colleng, p, tau0, etas, centrality):
     resultsDir = path.abspath("results")
@@ -79,5 +91,7 @@ if __name__ == "__main__":
 
     if args.calculation == "psin":
         runPsin(args.recompile, args.NUM_THREADS, args.n)
+    elif args.calculation == "epsn":
+        runEpsn(args.collsys, args.colleng, args.p, args.tau0, args.etas, args.centrality, args.recompile, args.NUM_THREADS)
     
     moveResults(args.collsys, args.colleng, args.p, args.tau0, args.etas, args.centrality)

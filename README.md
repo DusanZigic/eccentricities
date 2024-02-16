@@ -9,4 +9,8 @@ run.py
 cpsin
     directory that contains c++ source code that calculates reaction plane angles,
     Psi_n based on equation 3 from arxiv:1212.1008;
+
+cespn
+    directory that contains c++ source code that calculates anisotropies, eps_n
+    based on equation 2 from arxiv:1212.1008;
     
