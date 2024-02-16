@@ -19,46 +19,46 @@ def checkEoS():
         print("Error: no eos file. Aborting...", file=stderr)
         exit()
 
-def extractEvols(collsys, colleng, p, tau0, etas, centrality):
-    pParam = f"p{p:.2f}".replace('.', '').replace('-', '')
-    if p > 0: pParam += 'p'
-    tau0Param = f"tau{tau0:.1f}".replace('.', '')
+def extractEvols(arguments):
+    pParam = f"p{arguments.p:.2f}".replace('.', '').replace('-', '')
+    if arguments.p > 0: pParam += 'p'
+    tau0Param = f"tau{arguments.tau0:.1f}".replace('.', '')
     evolTarFileDir = path.expanduser("~/TRENTO-VISHNU-EBE")
-    evolTarFileDir = path.join(evolTarFileDir, f"TRENTO-VISHNU_{collsys}_{colleng}_etas_{etas}_{pParam}_{tau0Param}")
+    evolTarFileDir = path.join(evolTarFileDir, f"TRENTO-VISHNU_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_{pParam}_{tau0Param}")
     evolTarFileDir = path.join(evolTarFileDir, "TProfiles")
-    if not path.exists(path.join(evolTarFileDir, f"TProfiles_bin_cent={centrality}.tar.gz")):
+    if not path.exists(path.join(evolTarFileDir, f"TProfiles_bin_cent={arguments.centrality}.tar.gz")):
         print("Error: no evolutions for fiven parameter set. Aborting...", file=stderr)
         exit()
-    call(f"tar -xzf TProfiles_bin_cent={centrality}.tar.gz -C {path.abspath('')}", shell=True, cwd=evolTarFileDir)
-    rename(path.abspath(f"TProfiles_bin_cent={centrality}"), path.abspath("tempevols"))
+    call(f"tar -xzf TProfiles_bin_cent={arguments.centrality}.tar.gz -C {path.abspath('')}", shell=True, cwd=evolTarFileDir)
+    rename(path.abspath(f"TProfiles_bin_cent={arguments.centrality}"), path.abspath("tempevols"))
 
-def runPsin(recompile, nThreads, nRange):
-    if not path.exists(path.abspath("psin")) or recompile:
+def runPsin(arguments):
+    if not path.exists(path.abspath("psin")) or arguments.recompile:
         call("g++ cpsin/*.cpp -Wall -fopenmp -O3 -o psin", shell=True, cwd=path.abspath(""))
     eventN = len([f for f in listdir(path.abspath("tempevols")) if "TProfile" in f])
-    command  = f"export OMP_NUM_THREADS={nThreads:d}; "
-    command += f"./psin --n={nRange} --eventN={eventN:d}"
+    command  = f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; "
+    command += f"./psin --n={arguments.n} --eventN={eventN:d}"
     call(command, shell=True, cwd=path.abspath(""))
 
-def runEpsn(collsys, colleng, p, tau0, etas, centrality, recompile, nThreads):
+def runEpsn(arguments):
     psinDir = path.abspath("results")
-    psinDir = path.join(psinDir, f"results_{collsys}_{colleng}_etas_{etas}_p={p:.2f}_tau0={tau0:.1f}")
-    psinDir = path.join(psinDir, f"results_centrality={centrality}")
+    psinDir = path.join(psinDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
+    psinDir = path.join(psinDir, f"results_centrality={arguments.centrality}")
     if not path.exists(path.join(psinDir, "psin.dat")):
         print("Error: could not find Psin file. Aborting...", file=stderr)
         exit()
     copyfile(path.join(psinDir, "psin.dat"), path.abspath("psin.dat"))
-    if not path.exists(path.abspath("epsn")) or recompile:
+    if not path.exists(path.abspath("epsn")) or arguments.recompile:
         call("g++ cepsn/*.cpp -Wall -fopenmp -O3 -o epsn", shell=True, cwd=path.abspath(""))
-    call(f"export OMP_NUM_THREADS={nThreads:d}; ./epsn", shell=True, cwd=path.abspath(""))
+    call(f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; ./epsn", shell=True, cwd=path.abspath(""))
     remove(path.abspath("psin.dat"))
 
-def moveResults(collsys, colleng, p, tau0, etas, centrality):
+def moveResults(arguments):
     resultsDir = path.abspath("results")
     if not path.exists(resultsDir): mkdir(resultsDir)
-    resultsDir = path.join(resultsDir, f"results_{collsys}_{colleng}_etas_{etas}_p={p:.2f}_tau0={tau0:.1f}")
+    resultsDir = path.join(resultsDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
     if not path.exists(resultsDir): mkdir(resultsDir)
-    resultsDir = path.join(resultsDir, f"results_centrality={centrality}")
+    resultsDir = path.join(resultsDir, f"results_centrality={arguments.centrality}")
     if not path.exists(resultsDir): mkdir(resultsDir)
     fileList = [f for f in listdir(path.abspath("")) if ".dat" in f]
     for aFile in fileList:
@@ -87,11 +87,11 @@ if __name__ == "__main__":
         exit()
 
     checkEoS()
-    extractEvols(args.collsys, args.colleng, args.p, args.tau0, args.etas, args.centrality)
+    extractEvols(args)
 
     if args.calculation == "psin":
-        runPsin(args.recompile, args.NUM_THREADS, args.n)
+        runPsin(args)
     elif args.calculation == "epsn":
-        runEpsn(args.collsys, args.colleng, args.p, args.tau0, args.etas, args.centrality, args.recompile, args.NUM_THREADS)
+        runEpsn(args)
     
-    moveResults(args.collsys, args.colleng, args.p, args.tau0, args.etas, args.centrality)
+    moveResults(args)
