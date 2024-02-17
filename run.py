@@ -55,6 +55,19 @@ def runEpsn(arguments):
     call(f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; ./epsn", shell=True, cwd=path.abspath(""))
     remove(path.abspath("psin.dat"))
 
+def runAvgevols(arguments):
+    psinDir = path.abspath("results")
+    psinDir = path.join(psinDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
+    psinDir = path.join(psinDir, f"results_centrality={arguments.centrality}")
+    if not path.exists(path.join(psinDir, "psin.dat")):
+        print("Error: could not find Psin file. Aborting...", file=stderr)
+        exit()
+    copyfile(path.join(psinDir, "psin.dat"), path.abspath("psin.dat"))
+    if not path.exists(path.abspath("avgevols")) or arguments.recompile:
+        call("g++ cavgevols/*.cpp -Wall -fopenmp -O3 -o avgevols", shell=True, cwd=path.abspath(""))
+    call(f"./avgevols", shell=True, cwd=path.abspath(""))
+    remove(path.abspath("psin.dat"))
+
 def moveResults(arguments):
     resultsDir = path.abspath("results")
     if not path.exists(resultsDir): mkdir(resultsDir)
@@ -95,5 +108,7 @@ if __name__ == "__main__":
         runPsin(args)
     elif args.calculation == "epsn":
         runEpsn(args)
+    elif args.calculation == "avg":
+        runAvgevols(args)
     
     moveResults(args)
