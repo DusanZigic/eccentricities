@@ -51,8 +51,8 @@ int LoadEoS()
 		return -1;
 	}
 
+    std::vector<double> temps; temps.push_back(0.0);
 	std::vector<double> edens; edens.push_back(0.0);
-    std::vector<double> sdens; sdens.push_back(0.0);
 
 	std::string line; double buff_e, buff_p, buff_s, buff_T;
 
@@ -66,12 +66,12 @@ int LoadEoS()
 		ss >> buff_s;
 		ss >> buff_T;
 
-		edens.push_back(buff_e); sdens.push_back(buff_s);
+		temps.push_back(buff_T); edens.push_back(buff_e);
 	}
 
 	file_in.close();
 
-	EoS.SetData(edens, sdens);
+	EoS.SetData(temps, edens);
 
 	return 1;
 }
