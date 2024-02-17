@@ -30,6 +30,8 @@ def extractEvols(arguments):
         print("Error: no evolutions for fiven parameter set. Aborting...", file=stderr)
         exit()
     call(f"tar -xzf TProfiles_bin_cent={arguments.centrality}.tar.gz -C {path.abspath('')}", shell=True, cwd=evolTarFileDir)
+    if path.exists(path.abspath("tempevols")):
+        rmtree("tempevols")
     rename(path.abspath(f"TProfiles_bin_cent={arguments.centrality}"), path.abspath("tempevols"))
 
 def runPsin(arguments):
