@@ -289,14 +289,17 @@ static int ExportRotatedEvols(int n, std::vector<std::vector<std::vector<double>
 
 int AvgRotatedEvols()
 {
-    for (const auto& n : nList)
+    #pragma omp parallel for
+    for (size_t in=0; in<nList.size(); in++)
     {
+        auto n = nList[in];
+
         std::vector<std::vector<std::vector<double>>> avgTemps(tauGridPts.size(), std::vector<vector<double>>(xGridPts.size(), std::vector<double>(yGridPts.size(), 0.0L)));
         std::vector<std::vector<std::vector<double>>> avgEdens(tauGridPts.size(), std::vector<vector<double>>(xGridPts.size(), std::vector<double>(yGridPts.size(), 0.0L)));
 
         for (size_t eventID=1; eventID<=eventN; eventID++)
         {
-            interpFun tempsInt, edensInt; if (LoadEvol(eventID, tempsInt, edensInt) != 1) return -1;
+            interpFun tempsInt, edensInt; LoadEvol(eventID, tempsInt, edensInt);
 
             double tau, x, y, rotAngle = 0.0;
 
@@ -337,7 +340,7 @@ int AvgRotatedEvols()
             }
         }
 
-        if (ExportRotatedEvols(n, avgTemps, avgEdens) != 1) return -2;
+        ExportRotatedEvols(n, avgTemps, avgEdens);
     }
 
     return 1;
