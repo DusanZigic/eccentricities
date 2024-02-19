@@ -17,3 +17,7 @@ cespn
 cavgevols
     directory that contains c++ source code that rotates temperature and energy
     density evolutions for Psin_n and averages them;
+
+ceccavgevols
+    directory that contains c++ source code that calculates psi_n and eps_n on
+    rotated evolutions;
