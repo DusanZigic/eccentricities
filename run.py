@@ -3,6 +3,8 @@
 import argparse
 from sys import exit, stderr
 from os import path, listdir, mkdir, rename, remove
+from re import findall
+import numpy as np
 from subprocess import call
 from shutil import rmtree, copyfile
 
@@ -20,6 +22,8 @@ def checkEoS():
         exit()
 
 def extractEvols(arguments):
+    if arguments.calculation in ["plotevol", "eccavgevol"]:
+        return
     pParam = f"p{arguments.p:.2f}".replace('.', '').replace('-', '')
     if arguments.p > 0: pParam += 'p'
     tau0Param = f"tau{arguments.tau0:.1f}".replace('.', '')
@@ -55,7 +59,7 @@ def runEpsn(arguments):
     call(f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; ./epsn", shell=True, cwd=path.abspath(""))
     remove(path.abspath("psin.dat"))
 
-def runAvgevols(arguments):
+def runAvgEvols(arguments):
     psinDir = path.abspath("results")
     psinDir = path.join(psinDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
     psinDir = path.join(psinDir, f"results_centrality={arguments.centrality}")
@@ -67,6 +71,34 @@ def runAvgevols(arguments):
         call("g++ cavgevols/*.cpp -Wall -fopenmp -O3 -o avgevols", shell=True, cwd=path.abspath(""))
     call(f"./avgevols", shell=True, cwd=path.abspath(""))
     remove(path.abspath("psin.dat"))
+
+def plotEvols(arguments):
+    # resultsDir = path.abspath("results")
+    # resultsDir = path.join(resultsDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
+    # resultsDir = path.join(resultsDir, f"results_centrality={arguments.centrality}")
+    # evolFiles  = [f for f in listdir(resultsDir) if "avgrotevoln" in f]
+    # nListFull  = sorted([int(findall(r'\d+', f)[0]) for f in evolFiles])
+    # nList      = [n for n in nListFull if n in [1, 2, 3, 4, 5]]
+    # for n in nList:
+    #     evol = np.loadtxt(path.join(resultsDir, f"avgrotevoln{n:d}.dat"))
+    pass
+
+def runEccAvgEvol(arguments):
+    if not path.exists(path.abspath("eccavgevols")) or arguments.recompile:
+        call("g++ ceccavgevols/*.cpp -Wall -fopenmp -O3 -o eccavgevols", shell=True, cwd=path.abspath(""))
+    evolsDir = path.abspath("results")
+    evolsDir = path.join(evolsDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
+    evolsDir = path.join(evolsDir, f"results_centrality={arguments.centrality}")
+    evolFiles  = [f for f in listdir(evolsDir) if "avgrotevoln" in f]
+    for aFile in evolFiles:
+        copyfile(path.join(evolsDir, aFile), path.abspath(aFile))
+    nList = sorted([int(findall(r'\d+', f)[0]) for f in evolFiles])
+    nList = "".join(str(n) for n in nList)
+    command  = f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; "
+    command += f"./eccavgevols --n={nList};"
+    call(command, shell=True, cwd=path.abspath(""))
+    for aFile in evolFiles:
+        remove(path.abspath(aFile))
 
 def moveResults(arguments):
     resultsDir = path.abspath("results")
@@ -80,6 +112,12 @@ def moveResults(arguments):
         rename(path.abspath(aFile), path.join(resultsDir, aFile))
     if path.exists(path.abspath("tempevols")):
         rmtree(path.abspath("tempevols"))
+    fileList = [f for f in listdir(path.abspath("")) if ".pdf" in f]
+    if len(fileList) > 0:
+        figuresDir = path.join(resultsDir, "figures")
+        if not path.exists(figuresDir): mkdir(figuresDir)
+        for aFile in fileList:
+            rename(path.abspath(aFile), path.join(figuresDir, aFile))
 
 if __name__ == "__main__":
     main_dir = path.abspath("")
@@ -97,7 +135,7 @@ if __name__ == "__main__":
     parser.add_argument('--recompile',   action='store_true', default=False, help="recompile flag")
     args = parser.parse_args()
 
-    if args.calculation not in ["psin", "epsn", "avg"]:
+    if args.calculation not in ["psin", "epsn", "avgevol", "plotevol", "eccavgevol"]:
         print("Error: calculation type must be on of: psin, epsn, avg. Aborting...", file=stderr)
         exit()
 
@@ -108,7 +146,11 @@ if __name__ == "__main__":
         runPsin(args)
     elif args.calculation == "epsn":
         runEpsn(args)
-    elif args.calculation == "avg":
-        runAvgevols(args)
+    elif args.calculation == "avgevol":
+        runAvgEvols(args)
+    elif args.calculation == "plotevol":
+        plotEvols(args)
+    elif args.calculation == "eccavgevol":
+        runEccAvgEvol(args)
     
     moveResults(args)
