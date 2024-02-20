@@ -7,6 +7,10 @@ from re import findall
 import numpy as np
 from subprocess import call
 from shutil import rmtree, copyfile
+import matplotlib
+matplotlib.use('pdf')
+import matplotlib.pyplot as plt
+import matplotlib.colors
 
 def checkEoS():
     if not path.exists(path.abspath("eos")):
@@ -73,15 +77,61 @@ def runAvgEvols(arguments):
     remove(path.abspath("psin.dat"))
 
 def plotEvols(arguments):
-    # resultsDir = path.abspath("results")
-    # resultsDir = path.join(resultsDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
-    # resultsDir = path.join(resultsDir, f"results_centrality={arguments.centrality}")
-    # evolFiles  = [f for f in listdir(resultsDir) if "avgrotevoln" in f]
-    # nListFull  = sorted([int(findall(r'\d+', f)[0]) for f in evolFiles])
-    # nList      = [n for n in nListFull if n in [1, 2, 3, 4, 5]]
-    # for n in nList:
-    #     evol = np.loadtxt(path.join(resultsDir, f"avgrotevoln{n:d}.dat"))
-    pass
+    resultsDir = path.abspath("results")
+    resultsDir = path.join(resultsDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
+    resultsDir = path.join(resultsDir, f"results_centrality={arguments.centrality}")
+    evolFiles  = [f for f in listdir(resultsDir) if "avgrotevoln" in f]
+    nListFull  = sorted([int(findall(r'\d+', f)[0]) for f in evolFiles])
+    nList      = [n for n in nListFull if n in [1, 2, 3, 4, 5]]
+    maxTemps = []
+    maxEdens = []
+    for n in nList:
+        evol = np.loadtxt(path.join(resultsDir, f"avgrotevoln{n:d}.dat"))
+        maxTemps.append(evol[:,-2].max())
+        maxEdens.append(evol[:,-1].max())
+    maxTemps = max(maxTemps)
+    maxEdens = max(maxEdens)
+
+    rgbColors = np.loadtxt(path.abspath("rgbcolors/rgbcolors.dat"))
+    rgbColors = rgbColors.T
+    rgbColors = list(zip(rgbColors[0], rgbColors[1], rgbColors[2]))
+    colorFs   = np.linspace(0.0, 1.05*maxEdens, 20)
+    cMapEdens = matplotlib.colors.LinearSegmentedColormap.from_list(colorFs, rgbColors)
+    colorFs   = np.linspace(0.0, 1.05*maxTemps, 20)
+    cMapTemps = matplotlib.colors.LinearSegmentedColormap.from_list(colorFs, rgbColors)
+
+    evol    = np.loadtxt(path.join(resultsDir, f"avgrotevoln1.dat"))
+    tauPts  = np.sort(np.unique(evol[:, 0]))
+    tauPts  = tauPts[0:int(0.8*tauPts.size)]
+    tauList = list(tauPts[0::int(tauPts.size/(len(nList)-1))])
+
+    figure, axis = plt.subplots(len(nList), len(tauList), figsize=(15,15))
+    for ni, n in enumerate(nList):
+        evol = np.loadtxt(path.join(resultsDir, f"avgrotevoln{n:d}.dat"))
+        for taui, tau in enumerate(tauList):
+            evoltau = evol[(evol[:,0]==tau)]
+            evoltau = evoltau[((evoltau[:,1] >= -10.0) & (evoltau[:,1] <= 10.0))]
+            evoltau = evoltau[((evoltau[:,2] >= -10.0) & (evoltau[:,2] <= 10.0))]
+            xGrid   = np.sort(np.unique(evoltau[:,1]))
+            yGrid   = np.sort(np.unique(evoltau[:,2]))
+            edens   = evoltau[:,4].reshape((xGrid.size, yGrid.size), order='C')
+            axis[ni, taui].imshow(edens.T, origin='lower', extent=(-10.0, 10.0, -10.0, 10.0), interpolation='spline16', cmap=cMapEdens, vmin=1.0e-2, vmax=maxEdens)
+    plt.subplots_adjust(left=0.025, bottom=0.025, right=0.99, top=0.99, wspace=0.2, hspace=0.1)
+    plt.savefig(path.join(resultsDir, "avgrotinitedens.pdf"))
+    
+    figure, axis = plt.subplots(len(nList), len(tauList), figsize=(15,15))
+    for ni, n in enumerate(nList):
+        evol = np.loadtxt(path.join(resultsDir, f"avgrotevoln{n:d}.dat"))
+        for taui, tau in enumerate(tauList):
+            evoltau = evol[(evol[:,0]==tau)]
+            evoltau = evoltau[((evoltau[:,1] >= -10.0) & (evoltau[:,1] <= 10.0))]
+            evoltau = evoltau[((evoltau[:,2] >= -10.0) & (evoltau[:,2] <= 10.0))]
+            xGrid   = np.sort(np.unique(evoltau[:,1]))
+            yGrid   = np.sort(np.unique(evoltau[:,2]))
+            temps   = evoltau[:,3].reshape((xGrid.size, yGrid.size), order='C')
+            axis[ni, taui].imshow(temps.T, origin='lower', extent=(-10.0, 10.0, -10.0, 10.0), interpolation='spline16', cmap=cMapTemps, vmin=1.0e-2, vmax=maxTemps)
+    plt.subplots_adjust(left=0.025, bottom=0.025, right=0.99, top=0.99, wspace=0.2, hspace=0.1)
+    plt.savefig(path.join(resultsDir, "avgrotinittemp.pdf"))
 
 def runEccAvgEvol(arguments):
     if not path.exists(path.abspath("eccavgevols")) or arguments.recompile:
