@@ -26,7 +26,7 @@ def checkEoS():
         exit()
 
 def extractEvols(arguments):
-    if arguments.calculation in ["plotevol", "eccavgevol"]:
+    if arguments.calculation in ["plotevol", "eccavgevol", "epsnavg"]:
         return
     pParam = f"p{arguments.p:.2f}".replace('.', '').replace('-', '')
     if arguments.p > 0: pParam += 'p'
@@ -54,6 +54,9 @@ def extractEvols(arguments):
 def runPsin(arguments):
     if not path.exists(path.abspath("psin")) or arguments.recompile:
         call("g++ cpsin/*.cpp -Wall -fopenmp -O3 -o psin", shell=True, cwd=path.abspath(""))
+    if not path.exists(path.abspath("psin")):
+        print("Error: could not compile cpsin code. Aborting...", file=stderr)
+        exit()
     eventN = len([f for f in listdir(path.abspath("tempevols")) if "TProfile" in f])
     command  = f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; "
     command += f"./psin --n={arguments.n} --eventN={eventN:d}"
@@ -69,6 +72,9 @@ def runEpsn(arguments):
     copyfile(path.join(psinDir, "psin.dat"), path.abspath("psin.dat"))
     if not path.exists(path.abspath("epsn")) or arguments.recompile:
         call("g++ cepsn/*.cpp -Wall -fopenmp -O3 -o epsn", shell=True, cwd=path.abspath(""))
+    if not path.exists(path.abspath("epsn")):
+        print("Error: could not compile cepsn code. Aborting...", file=stderr)
+        exit()
     call(f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; ./epsn", shell=True, cwd=path.abspath(""))
     remove(path.abspath("psin.dat"))
 
@@ -82,6 +88,9 @@ def runAvgEvols(arguments):
     copyfile(path.join(psinDir, "psin.dat"), path.abspath("psin.dat"))
     if not path.exists(path.abspath("avgevols")) or arguments.recompile:
         call("g++ cavgevols/*.cpp -Wall -fopenmp -O3 -o avgevols", shell=True, cwd=path.abspath(""))
+    if not path.exists(path.abspath("avgevols")):
+        print("Error: could not compile cavgevols code. Aborting...", file=stderr)
+        exit()
     call(f"./avgevols", shell=True, cwd=path.abspath(""))
     remove(path.abspath("psin.dat"))
 
@@ -145,6 +154,9 @@ def plotEvols(arguments):
 def runEccAvgEvol(arguments):
     if not path.exists(path.abspath("eccavgevols")) or arguments.recompile:
         call("g++ ceccavgevols/*.cpp -Wall -fopenmp -O3 -o eccavgevols", shell=True, cwd=path.abspath(""))
+    if not path.exists(path.abspath("eccavgevols")):
+        print("Error: could not compile ceccavgevols code. Aborting...", file=stderr)
+        exit()
     evolsDir = path.abspath("results")
     evolsDir = path.join(evolsDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
     evolsDir = path.join(evolsDir, f"results_centrality={arguments.centrality}")
@@ -171,6 +183,22 @@ def runjTnPsinTau(arguments):
     command += f"./jTn --eventN={eventN:d}"
     call(command, shell=True, cwd=path.abspath(""))
     remove(path.abspath("phigausspts.dat"))
+
+def runEpsnAvg(arguments):
+    if not path.exists(path.abs("epsnavg")) or arguments.recompile:
+        call("g++ cepsnavg/*.cpp -Wall -fopenmp -O3 -o epsnavg", shell=True, cwd=path.abspath(""))
+    if not path.exists(path.abs("epsnavg")):
+        print("Error: could not compile cepsnavg code. Aborting...", file=stderr)
+        exit()
+    epsnDir = path.abspath("results")
+    epsnDir = path.join(epsnDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
+    epsnDir = path.join(epsnDir, f"results_centrality={arguments.centrality}")
+    if not path.exists(path.join(epsnDir, "epsn.dat")):
+        print("Error: could not find epsn file. Aborting...", file=stderr)
+        exit()
+    copyfile(path.join(epsnDir, "epsn.dat"), path.abspath("epsn.dat"))
+    call("export OMP_NUM_THREADS={arguments.NUM_THREADS}; ./epsnavg", shell=True, cwd=path.abspath(""))
+    remove(path.abspath("epsn.dat"))
 
 def moveResults(arguments):
     resultsDir = path.abspath("results")
@@ -210,7 +238,7 @@ if __name__ == "__main__":
     parser.add_argument('--recompile',   action='store_true', default=False, help="recompile flag")
     args = parser.parse_args()
 
-    if args.calculation not in ["psin", "epsn", "avgevol", "plotevol", "eccavgevol", "jtnpsintau"]:
+    if args.calculation not in ["psin", "epsn", "avgevol", "plotevol", "eccavgevol", "jtnpsintau", "epsnavg"]:
         print("Error: calculation type must be on of: psin, epsn, avg. Aborting...", file=stderr)
         exit()
 
@@ -229,5 +257,7 @@ if __name__ == "__main__":
         runEccAvgEvol(args)
     elif args.calculation == "jtnpsintau":
         runjTnPsinTau(args)
+    elif args.calculation == "epsnavg":
+        runEpsnAvg(args)
     
     moveResults(args)
