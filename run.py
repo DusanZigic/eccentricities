@@ -41,6 +41,15 @@ def extractEvols(arguments):
     if path.exists(path.abspath("tempevols")):
         rmtree("tempevols")
     rename(path.abspath(f"TProfiles_bin_cent={arguments.centrality}"), path.abspath("tempevols"))
+    if arguments.calculation in ["jtnpsintau"]:
+        bcpSrcDir  = path.expanduser("~/TRENTO-VISHNU-EBE")
+        bcpSrcDir  = path.join(bcpSrcDir, f"TRENTO-VISHNU_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_{pParam}_{tau0Param}")
+        bcpSrcDir  = path.join(bcpSrcDir, "BinaryCollPoints")
+        bcpSrcDir  = path.join(bcpSrcDir, f"BinaryCollPoints_cent={arguments.centrality}")
+        bcpDestDir = path.abspath("bcpoints")
+        if not path.exists(bcpDestDir): mkdir(bcpDestDir)
+        for aFile in listdir(bcpSrcDir):
+            copyfile(path.join(bcpSrcDir, aFile), path.join(bcpDestDir, aFile))
 
 def runPsin(arguments):
     if not path.exists(path.abspath("psin")) or arguments.recompile:
@@ -150,6 +159,19 @@ def runEccAvgEvol(arguments):
     for aFile in evolFiles:
         remove(path.abspath(aFile))
 
+def runjTnPsinTau(arguments):
+    if not path.exists(path.abspath("jTn")) or arguments.recompile:
+        call("g++ cjtnpsintau/*.cpp -Wall -fopenmp -O3 -o jTn", shell=True, cwd=path.abspath(""))
+    gqPtsX = np.polynomial.legendre.leggauss(arguments.phiPtsN)[0]*np.pi + np.pi
+    gqPtsW = np.polynomial.legendre.leggauss(arguments.phiPtsN)[1]*np.pi
+    gqPts  = np.vstack((gqPtsX, gqPtsW)).T
+    np.savetxt(path.abspath("phigausspts.dat"), gqPts, fmt='%.12e')
+    eventN   = len(listdir(path.abspath("bcpoints")))
+    command  = f"export OMP_NUM_THREADS={arguments.NUM_THREADS}; "
+    command += f"./jTn --eventN={eventN:d}"
+    call(command, shell=True, cwd=path.abspath(""))
+    remove(path.abspath("phigausspts.dat"))
+
 def moveResults(arguments):
     resultsDir = path.abspath("results")
     if not path.exists(resultsDir): mkdir(resultsDir)
@@ -160,14 +182,16 @@ def moveResults(arguments):
     fileList = [f for f in listdir(path.abspath("")) if ".dat" in f]
     for aFile in fileList:
         rename(path.abspath(aFile), path.join(resultsDir, aFile))
-    if path.exists(path.abspath("tempevols")):
-        rmtree(path.abspath("tempevols"))
     fileList = [f for f in listdir(path.abspath("")) if ".pdf" in f]
     if len(fileList) > 0:
         figuresDir = path.join(resultsDir, "figures")
         if not path.exists(figuresDir): mkdir(figuresDir)
         for aFile in fileList:
             rename(path.abspath(aFile), path.join(figuresDir, aFile))
+    if path.exists(path.abspath("tempevols")):
+        rmtree(path.abspath("tempevols"))
+    if path.exists(path.abspath("bcpoints")):
+        rmtree(path.abspath("bcpoints"))
 
 if __name__ == "__main__":
     main_dir = path.abspath("")
@@ -181,11 +205,12 @@ if __name__ == "__main__":
     parser.add_argument('--etas',        type=str,   default = "const",      help="eta/s dependency")
     parser.add_argument('--centrality',  type=str,   default = "30-40%",     help="centrality class")
     parser.add_argument('--n',           type=str,   default = "1-8",        help="range of Fourier expansion coefficients")
+    parser.add_argument('--phiPtsN',     type=int,   default = 100,          help="number of phi points for Gaussian quadrature")
     parser.add_argument('--NUM_THREADS', type=int,   default = 50,           help="number of omp threads")
     parser.add_argument('--recompile',   action='store_true', default=False, help="recompile flag")
     args = parser.parse_args()
 
-    if args.calculation not in ["psin", "epsn", "avgevol", "plotevol", "eccavgevol"]:
+    if args.calculation not in ["psin", "epsn", "avgevol", "plotevol", "eccavgevol", "jtnpsintau"]:
         print("Error: calculation type must be on of: psin, epsn, avg. Aborting...", file=stderr)
         exit()
 
@@ -202,5 +227,7 @@ if __name__ == "__main__":
         plotEvols(args)
     elif args.calculation == "eccavgevol":
         runEccAvgEvol(args)
+    elif args.calculation == "jtnpsintau":
+        runjTnPsinTau(args)
     
     moveResults(args)
