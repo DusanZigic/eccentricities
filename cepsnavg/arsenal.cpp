@@ -255,8 +255,6 @@ int AvgEpsn()
         interpFun edensInt;     if (LoadEvol(eventID, edensInt)               != 1) return -1;
         double integratedEDens; if (IntegrateEDens(edensInt, integratedEDens) != 1) return -2;
 
-        std::map<unsigned int, double> norm;
-
         for (const auto& n : nList) {
             avgEpsn[n] += Epsn[eventID][n]*integratedEDens;
             norm[n] += integratedEDens;
