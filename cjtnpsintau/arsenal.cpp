@@ -17,14 +17,14 @@ static const double PI = 3.1415926535897932L;
 
 static const double TCRIT = 0.155L;
 
-static size_t eventN; static std::vector<unsigned int> nList; static unsigned int m;
+static size_t eventN; static std::vector<unsigned int> nList; static unsigned int m; size_t QMCPtsN;
 
 int GetInputs(int argc, char const *argv[])
 {
     std::vector<std::string> inputs; for (int i=1; i<argc; i++) inputs.push_back(argv[i]);
 
 	if ((inputs.size() == 1) && ((inputs[0] == "-h") || (inputs[0] == "--h"))) {
-		std::cout << "default values: --eventN=1000 --n=1-8 --m=2" << std::endl;
+		std::cout << "default values: --eventN=1000 --n=1-8 --m=2 --QMCPtsN=5000000" << std::endl;
 		return 0;
 	}
 
@@ -37,9 +37,10 @@ int GetInputs(int argc, char const *argv[])
 		inputparams[key] = val;
 	}
 
-    		  eventN =  1000; if (inputparams.count("eventN") > 0) eventN = std::stoi(inputparams["eventN"]);
-	std::string nstr = "1-8"; if (inputparams.count("n")      > 0)   nstr = 		  inputparams["n"];
-    			   m =     2; if (inputparams.count("m")      > 0)      m = std::stoi(inputparams["m"]);
+    		  eventN =    1000; if (inputparams.count("eventN")  > 0)  eventN = std::stoi(inputparams["eventN"]);
+	std::string nstr =   "1-8"; if (inputparams.count("n")       > 0)    nstr = 		  inputparams["n"];
+    			   m =       2; if (inputparams.count("m")       > 0)       m = std::stoi(inputparams["m"]);
+             QMCPtsN = 5000000; if (inputparams.count("QMCPtsN") > 0) QMCPtsN = std::stoi(inputparams["QMCPtsN"]);
     
     if (eventN < 0) {
 		std::cerr << "Error: provided eventN parameter must be positive integer. Aborting...\n";
@@ -199,6 +200,39 @@ int GenerateGrids()
 	return 1;
 }
 
+static std::vector<std::vector<double>> QMCPtsX(2), QMCPtsY(2);
+
+static double HaltonSequence(long unsigned int index, int base)
+{
+	double f = 1.0;
+	double res = 0.0;
+
+	while (index > 0) {
+		f = f / base;
+		res += f * (index % base);
+		index = index / base; // integer division
+	}
+
+	return res;
+}
+
+int GenerateHSeq()
+{
+	std::vector<int> base{11, 13, 17, 19, 23, 29, 31, 37};
+	std::random_device rd;
+	auto rng = std::default_random_engine{rd()};
+	std::shuffle(base.begin(), base.end(), rng);
+
+	for (size_t i=0; i<QMCPtsN; i++) {
+		for (size_t j=0; j<2; j++) {
+			QMCPtsX[j].push_back(HaltonSequence((i+1)*409, base[j]));
+			QMCPtsY[j].push_back(HaltonSequence((i+1)*409, base[j+2]));
+		}
+	}
+
+	return 1;
+}
+
 static int LoadEvol(size_t event_id, std::vector<double> &taupts, interpFun &tempsint, interpFun &edensint)
 {
     std::string path_in = "./tempevols/TProfile_" + std::to_string(event_id) + ".dat";
@@ -303,14 +337,22 @@ static int CalcPsin(const std::vector<double> &taupts, interpFun &edensint, unsi
 {
     for (const auto &tau : taupts) {
         double sinsum = 0.0L, cossum = 0.0L;
-        for (const auto &x : xGridPts) {
-            for (const auto &y : yGridPts) {
-                double rho = std::sqrt(x*x + y*y);
-                double phi = std::atan2(y, x);
-                sinsum += std::pow(rho, static_cast<double>(m))*std::sin(static_cast<double>(n)*phi)*edensint.interp(tau, x, y);
-                cossum += std::pow(rho, static_cast<double>(m))*std::cos(static_cast<double>(n)*phi)*edensint.interp(tau, x, y);
-            }
+        double x, y, rho, phi;
+        for (size_t iq=0; iq<QMCPtsN; iq++) {
+            x = xGridPts.front() + (xGridPts.back() - xGridPts.front())*QMCPtsX[0][iq];
+            y = yGridPts.front() + (yGridPts.back() - yGridPts.front())*QMCPtsY[0][iq];
+            rho = std::sqrt(x*x + y*y);
+            phi = std::atan2(y, x);
+            sinsum += std::pow(rho, static_cast<double>(m))*std::sin(static_cast<double>(n)*phi)*edensint.interp(tau, x, y);
+
+            x = xGridPts.front() + (xGridPts.back() - xGridPts.front())*QMCPtsX[1][iq];
+            y = yGridPts.front() + (yGridPts.back() - yGridPts.front())*QMCPtsY[1][iq];
+            rho = std::sqrt(x*x + y*y);
+            phi = std::atan2(y, x);
+            cossum += std::pow(rho, static_cast<double>(m))*std::cos(static_cast<double>(n)*phi)*edensint.interp(tau, x, y);
         }
+        sinsum *= ((xGridPts.back() - xGridPts.front())*(yGridPts.back() - yGridPts.front())/static_cast<double>(QMCPtsN));
+        cossum *= ((xGridPts.back() - xGridPts.front())*(yGridPts.back() - yGridPts.front())/static_cast<double>(QMCPtsN));
         psintau.push_back(1.0L/static_cast<double>(n)*std::atan2(sinsum, cossum) + PI/static_cast<double>(n));
     }
 
@@ -354,7 +396,7 @@ int CalcjTn()
 
 int ExportjTn()
 {
-    std::ofstream file_out("./jTn.dat", std::ios_base::out);
+    std::ofstream file_out("./jTnQMC.dat", std::ios_base::out);
     if (!file_out.is_open()) {
         std::cerr << "Error: unable to open jTn output file. Aborting..." << std::endl;
         return -1;
