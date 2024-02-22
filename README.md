@@ -21,3 +21,7 @@ cavgevols
 ceccavgevols
     directory that contains c++ source code that calculates psi_n and eps_n on
     rotated evolutions;
+
+cepsnavg
+    directory that contains c++ source code that averages eps_n with weight which
+    is denominator in equation 2 from arxiv:1212.1008;
