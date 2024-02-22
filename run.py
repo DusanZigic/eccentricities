@@ -26,7 +26,7 @@ def checkEoS():
         exit()
 
 def extractEvols(arguments):
-    if arguments.calculation in ["plotevol", "eccavgevol", "epsnavg"]:
+    if arguments.calculation in ["plotevol", "eccavgevol"]:
         return
     pParam = f"p{arguments.p:.2f}".replace('.', '').replace('-', '')
     if arguments.p > 0: pParam += 'p'
@@ -185,9 +185,9 @@ def runjTnPsinTau(arguments):
     remove(path.abspath("phigausspts.dat"))
 
 def runEpsnAvg(arguments):
-    if not path.exists(path.abs("epsnavg")) or arguments.recompile:
+    if not path.exists(path.abspath("epsnavg")) or arguments.recompile:
         call("g++ cepsnavg/*.cpp -Wall -fopenmp -O3 -o epsnavg", shell=True, cwd=path.abspath(""))
-    if not path.exists(path.abs("epsnavg")):
+    if not path.exists(path.abspath("epsnavg")):
         print("Error: could not compile cepsnavg code. Aborting...", file=stderr)
         exit()
     epsnDir = path.abspath("results")
@@ -197,7 +197,7 @@ def runEpsnAvg(arguments):
         print("Error: could not find epsn file. Aborting...", file=stderr)
         exit()
     copyfile(path.join(epsnDir, "epsn.dat"), path.abspath("epsn.dat"))
-    call("export OMP_NUM_THREADS={arguments.NUM_THREADS}; ./epsnavg", shell=True, cwd=path.abspath(""))
+    call(f"export OMP_NUM_THREADS={arguments.NUM_THREADS}; ./epsnavg", shell=True, cwd=path.abspath(""))
     remove(path.abspath("epsn.dat"))
 
 def moveResults(arguments):
