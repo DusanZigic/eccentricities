@@ -258,7 +258,8 @@ int CalcPsin()
 
 int ExportPsin()
 {
-    std::ofstream file_out("psin.dat", std::ios_base::out);
+	std::string path_out = "psin_m=" + std::to_string(m) + ".dat";
+    std::ofstream file_out(path_out, std::ios_base::out);
     if (!file_out.is_open()) {
         std::cerr << "Error: unable to open Psin output file. Aborting..." << std::endl;
         return -1;

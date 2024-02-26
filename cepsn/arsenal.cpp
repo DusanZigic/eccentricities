@@ -167,7 +167,7 @@ static std::vector<int> nList;
 
 int LoadPsin()
 {
-    std::string path_in = "./psin.dat";
+    std::string path_in = "psin_m=" + std::to_string(m) + ".dat";;
     std::ifstream file_in(path_in, std::ios_base::in);
     if(!file_in.is_open()) {
         std::cerr << "Error: unable to open psin file. Aborting..." << std::endl;
@@ -275,7 +275,8 @@ int CalcEpsn()
 
 int ExportEpsn()
 {
-    std::ofstream file_out("epsn.dat", std::ios_base::out);
+	std::string path_out = "epsn_m=" + std::to_string(m) + ".dat";
+    std::ofstream file_out(path_out, std::ios_base::out);
     if (!file_out.is_open()) {
         std::cerr << "Error: unable to open Epsn output file. Aborting..." << std::endl;
         return -1;

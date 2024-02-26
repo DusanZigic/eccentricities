@@ -59,24 +59,26 @@ def runPsin(arguments):
         exit()
     eventN = len([f for f in listdir(path.abspath("tempevols")) if "TProfile" in f])
     command  = f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; "
-    command += f"./psin --n={arguments.n} --eventN={eventN:d}"
+    command += f"./psin --n={arguments.n} --eventN={eventN:d} --m={arguments.m:d}"
     call(command, shell=True, cwd=path.abspath(""))
 
 def runEpsn(arguments):
     psinDir = path.abspath("results")
     psinDir = path.join(psinDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
     psinDir = path.join(psinDir, f"results_centrality={arguments.centrality}")
-    if not path.exists(path.join(psinDir, "psin.dat")):
+    if not path.exists(path.join(psinDir, f"psin_m={arguments.m:d}.dat")):
         print("Error: could not find Psin file. Aborting...", file=stderr)
         exit()
-    copyfile(path.join(psinDir, "psin.dat"), path.abspath("psin.dat"))
+    copyfile(path.join(psinDir, f"psin_m={arguments.m:d}.dat"), path.abspath(f"psin_m={arguments.m:d}.dat"))
     if not path.exists(path.abspath("epsn")) or arguments.recompile:
         call("g++ cepsn/*.cpp -Wall -fopenmp -O3 -o epsn", shell=True, cwd=path.abspath(""))
     if not path.exists(path.abspath("epsn")):
         print("Error: could not compile cepsn code. Aborting...", file=stderr)
         exit()
-    call(f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; ./epsn", shell=True, cwd=path.abspath(""))
-    remove(path.abspath("psin.dat"))
+    command =  f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; "
+    command += f"./epsn --m={arguments.m:d}"
+    call(command, shell=True, cwd=path.abspath(""))
+    remove(path.abspath(f"psin_m={arguments.m:d}.dat"))
 
 def runAvgEvols(arguments):
     psinDir = path.abspath("results")
@@ -233,6 +235,7 @@ if __name__ == "__main__":
     parser.add_argument('--etas',        type=str,   default = "const",      help="eta/s dependency")
     parser.add_argument('--centrality',  type=str,   default = "30-40%",     help="centrality class")
     parser.add_argument('--n',           type=str,   default = "1-8",        help="range of Fourier expansion coefficients")
+    parser.add_argument('--m',           type=int,   default = 2,            help="m factor")
     parser.add_argument('--phiPtsN',     type=int,   default = 100,          help="number of phi points for Gaussian quadrature")
     parser.add_argument('--NUM_THREADS', type=int,   default = 50,           help="number of omp threads")
     parser.add_argument('--recompile',   action='store_true', default=False, help="recompile flag")
