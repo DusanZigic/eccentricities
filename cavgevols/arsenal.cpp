@@ -17,6 +17,7 @@ static const double PI = 3.1415926535897932L;
 static std::string rotationAngle;
 static std::vector<std::string> rotationAngleList;
 static size_t eventN;
+static unsigned int m;
 
 int GetInputs(int argc, char const *argv[])
 {
@@ -49,6 +50,7 @@ int GetInputs(int argc, char const *argv[])
     }
 
     eventN = 0; if (inputparams.count("eventN") > 0) eventN = std::stoi(inputparams["eventN"]);
+         m = 2; if (inputparams.count("m")      > 0)      m = std::stoi(inputparams["m"]);
 
     return 1;
 }
@@ -94,7 +96,7 @@ static std::vector<int> nList;
 
 int LoadPsin()
 {
-    std::string path_in = "./psin.dat";
+    std::string path_in = "./psin_m=" + std::to_string(m) + ".dat";
     std::ifstream file_in(path_in, std::ios_base::in);
     if(!file_in.is_open()) {
         std::cerr << "Error: unable to open psin file. Aborting..." << std::endl;
@@ -257,7 +259,8 @@ static int LoadEvol(size_t event_id, interpFun& tempsint, interpFun& edensint)
 
 static int ExportRotatedEvols(int n, std::vector<std::vector<std::vector<double>>> &avgtemps, std::vector<std::vector<std::vector<double>>> &avgedens)
 {
-    std::ofstream file_out("avgrotevoln" + std::to_string(n) + ".dat");
+    std::string path_out = "avgrotevol_m=" + std::to_string(m) + "_n=" + std::to_string(n) + "_" + rotationAngle + ".dat";
+    std::ofstream file_out(path_out);
     if (!file_out.is_open()) {
         std::cerr << "Error: unable to open evolutions output file. Aborting..." << std::endl;
         return -1;

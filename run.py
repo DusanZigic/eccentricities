@@ -84,17 +84,18 @@ def runAvgEvols(arguments):
     psinDir = path.abspath("results")
     psinDir = path.join(psinDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
     psinDir = path.join(psinDir, f"results_centrality={arguments.centrality}")
-    if not path.exists(path.join(psinDir, "psin.dat")):
+    if not path.exists(path.join(psinDir, f"psin_m={arguments.m:d}.dat")):
         print("Error: could not find Psin file. Aborting...", file=stderr)
         exit()
-    copyfile(path.join(psinDir, "psin.dat"), path.abspath("psin.dat"))
+    copyfile(path.join(psinDir, f"psin_m={arguments.m:d}.dat"), path.abspath(f"psin_m={arguments.m:d}.dat"))
     if not path.exists(path.abspath("avgevols")) or arguments.recompile:
         call("g++ cavgevols/*.cpp -Wall -fopenmp -O3 -o avgevols", shell=True, cwd=path.abspath(""))
     if not path.exists(path.abspath("avgevols")):
         print("Error: could not compile cavgevols code. Aborting...", file=stderr)
         exit()
-    call(f"./avgevols", shell=True, cwd=path.abspath(""))
-    remove(path.abspath("psin.dat"))
+    command = f"./avgevols --m={arguments.m} --rotationAngle={arguments.rotationAngle}"
+    call(command, shell=True, cwd=path.abspath(""))
+    remove(path.abspath(f"psin_m={arguments.m:d}.dat"))
 
 def plotEvols(arguments):
     resultsDir = path.abspath("results")
@@ -227,18 +228,19 @@ if __name__ == "__main__":
     main_dir = path.abspath("")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--calculation', type=str,   default = "psin",       help="calculation type: psin, epsn, avg")
-    parser.add_argument('--collsys',     type=str,   default = "PbPb",       help="collision system: PbPb or AuAu")
-    parser.add_argument('--colleng',     type=str,   default = "5020GeV",    help="collision energy: 5020GeV or 200GeV")
-    parser.add_argument('--p',           type=float, default = 0.0,          help="TRENTO p parameter")
-    parser.add_argument('--tau0',        type=float, default = 1.0,          help="thermalization time, tau0")
-    parser.add_argument('--etas',        type=str,   default = "const",      help="eta/s dependency")
-    parser.add_argument('--centrality',  type=str,   default = "30-40%",     help="centrality class")
-    parser.add_argument('--n',           type=str,   default = "1-8",        help="range of Fourier expansion coefficients")
-    parser.add_argument('--m',           type=int,   default = 2,            help="m factor")
-    parser.add_argument('--phiPtsN',     type=int,   default = 100,          help="number of phi points for Gaussian quadrature")
-    parser.add_argument('--NUM_THREADS', type=int,   default = 50,           help="number of omp threads")
-    parser.add_argument('--recompile',   action='store_true', default=False, help="recompile flag")
+    parser.add_argument('--calculation',   type=str,   default = "psin",       help="calculation type: psin, epsn, avg")
+    parser.add_argument('--collsys',       type=str,   default = "PbPb",       help="collision system: PbPb or AuAu")
+    parser.add_argument('--colleng',       type=str,   default = "5020GeV",    help="collision energy: 5020GeV or 200GeV")
+    parser.add_argument('--p',             type=float, default = 0.0,          help="TRENTO p parameter")
+    parser.add_argument('--tau0',          type=float, default = 1.0,          help="thermalization time, tau0")
+    parser.add_argument('--etas',          type=str,   default = "const",      help="eta/s dependency")
+    parser.add_argument('--centrality',    type=str,   default = "30-40%",     help="centrality class")
+    parser.add_argument('--n',             type=str,   default = "1-8",        help="range of Fourier expansion coefficients")
+    parser.add_argument('--m',             type=int,   default = 2,            help="m factor")
+    parser.add_argument('--rotationAngle', type=str,   default = "plus-angle", help="rotation ange for evolution averaging")
+    parser.add_argument('--phiPtsN',       type=int,   default = 100,          help="number of phi points for Gaussian quadrature")
+    parser.add_argument('--NUM_THREADS',   type=int,   default = 50,           help="number of omp threads")
+    parser.add_argument('--recompile',     action='store_true', default=False, help="recompile flag")
     args = parser.parse_args()
 
     if args.calculation not in ["psin", "epsn", "avgevol", "plotevol", "eccavgevol", "jtnpsintau", "epsnavg"]:
