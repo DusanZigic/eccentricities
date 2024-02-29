@@ -228,9 +228,9 @@ static int LoadEvol(size_t event_id, interpFun& edensint)
 	return 1;
 }
 
-static int CalcEpsn(interpFun& edensint, int n, double psin, double& epsn)
+static double CalcNumerator(interpFun &edensint, int n, double psin)
 {
-    double numerator = 0.0L, denominator = 0.0L;
+    double numerator = 0.0L;
 
 	double x, y, rho, phi;
 
@@ -241,20 +241,30 @@ static int CalcEpsn(interpFun& edensint, int n, double psin, double& epsn)
 		rho = std::sqrt(x*x + y*y);
 		phi = std::atan2(y, x);
 		numerator += std::pow(rho, static_cast<double>(m))*std::cos(static_cast<double>(n)*(phi - psin))*edensint.interp(x, y);
-
-		x = xGridPts.front() + (xGridPts.back() - xGridPts.front())*QMCPtsX[1][iq];
-		y = yGridPts.front() + (yGridPts.back() - yGridPts.front())*QMCPtsY[1][iq];
-		rho = std::sqrt(x*x + y*y);
-		phi = std::atan2(y, x);
-		denominator += std::pow(rho, static_cast<double>(m))*edensint.interp(x, y);
 	}
 
 	numerator *= ((xGridPts.back() - xGridPts.front())*(yGridPts.back() - yGridPts.front())/static_cast<double>(QMCPtsN));
+
+    return numerator;
+}
+
+static double CalcDenominator(interpFun &edensint)
+{
+    double denominator = 0.0L;
+
+	double x, y, rho;
+
+	for (size_t iq=0; iq<QMCPtsN; iq++)
+	{
+		x = xGridPts.front() + (xGridPts.back() - xGridPts.front())*QMCPtsX[1][iq];
+		y = yGridPts.front() + (yGridPts.back() - yGridPts.front())*QMCPtsY[1][iq];
+		rho = std::sqrt(x*x + y*y);
+		denominator += std::pow(rho, static_cast<double>(m))*edensint.interp(x, y);
+	}
+
 	denominator *= ((xGridPts.back() - xGridPts.front())*(yGridPts.back() - yGridPts.front())/static_cast<double>(QMCPtsN));
 
-	epsn = -1.0L*numerator/denominator;
-
-    return 1;
+    return denominator;
 }
 
 static std::map<size_t, std::map<int, double>> Epsn;
@@ -265,8 +275,10 @@ int CalcEpsn()
     for (size_t eventID=1; eventID<=eventN; eventID++)
     {
         interpFun edensInt; LoadEvol(eventID, edensInt);
+		double denominator = CalcDenominator(edensInt);
         for (const auto& n : nList) {
-            CalcEpsn(edensInt, n, Psin[eventID][n], Epsn[eventID][n]);
+			double numerator = CalcNumerator(edensInt, n, Psin[eventID][n]);
+            Epsn[eventID][n] = -1.0*numerator/denominator;
         }
     }
 
