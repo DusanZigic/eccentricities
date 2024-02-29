@@ -165,17 +165,19 @@ def runEccAvgEvol(arguments):
     if not path.exists(path.abspath("eccavgevols")):
         print("Error: could not compile ceccavgevols code. Aborting...", file=stderr)
         exit()
-    evolsDir = path.abspath("results")
-    evolsDir = path.join(evolsDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
-    evolsDir = path.join(evolsDir, f"results_centrality={arguments.centrality}")
-    evolFiles  = [f for f in listdir(evolsDir) if "avgrotevoln" in f]
+    evolsDir  = path.abspath("results")
+    evolsDir  = path.join(evolsDir, f"results_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_p={arguments.p:.2f}_tau0={arguments.tau0:.1f}")
+    evolsDir  = path.join(evolsDir, f"results_centrality={arguments.centrality}")
+    evolFiles = [f for f in listdir(evolsDir) if "avgrotevol" in f]
+    evolFiles = [f for f in evolFiles if f"m={arguments.m:d}" in f]
+    evolFiles = [f for f in evolFiles if f"{arguments.rotationAngle}.dat" in f]
     for aFile in evolFiles:
         copyfile(path.join(evolsDir, aFile), path.abspath(aFile))
     sleep(2)
-    nList = sorted([int(findall(r'\d+', f)[0]) for f in evolFiles])
-    nList = "".join(str(n) for n in nList)
+    nList = sorted([int(findall(r'\d+', f)[1]) for f in evolFiles])
+    nList = ",".join(str(n) for n in nList)
     command  = f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; "
-    command += f"./eccavgevols --n={nList};"
+    command += f"./eccavgevols --m={arguments.m:d} --n={nList} --rotationAngle={arguments.rotationAngle};"
     call(command, shell=True, cwd=path.abspath(""))
     for aFile in evolFiles:
         remove(path.abspath(aFile))

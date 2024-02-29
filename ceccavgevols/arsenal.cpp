@@ -16,6 +16,8 @@ static const double PI = 3.1415926535897932L;
 
 static std::vector<int> nList;
 static unsigned int m;
+static std::string rotationAngle;
+static std::vector<std::string> rotationAngleList;
 static size_t QMCPtsN;
 
 int GetInputs(int argc, char const *argv[])
@@ -23,7 +25,7 @@ int GetInputs(int argc, char const *argv[])
     std::vector<std::string> inputs; for (int i=1; i<argc; i++) inputs.push_back(argv[i]);
 
 	if ((inputs.size() == 1) && ((inputs[0] == "-h") || (inputs[0] == "--h"))) {
-		std::cout << "default values: --nList=1,2,3,4,5,6,7,8 --m=2 --QMCPtsN=5000000" << std::endl;
+		std::cout << "default values: --m=2 --nList=1,2,3,4,5,6,7,8 --rotationAngle=plus-angle --QMCPtsN=5000000" << std::endl;
 		return 0;
 	}
 
@@ -36,14 +38,24 @@ int GetInputs(int argc, char const *argv[])
 		inputparams[key] = val;
 	}
 
-    std::string nStr = "1,2,3,4,5,6,7,8"; if (inputparams.count("n")       > 0)    nStr =           inputparams["n"];
-                   m =                 2; if (inputparams.count("m")       > 0)       m = std::stoi(inputparams["m"]);
-             QMCPtsN =           5000000; if (inputparams.count("QMCPtsN") > 0) QMCPtsN = std::stoi(inputparams["QMCPtsN"]);
+                   m =                 2; if (inputparams.count("m")             > 0)             m = std::stoi(inputparams["m"]);
+    std::string nStr = "1,2,3,4,5,6,7,8"; if (inputparams.count("n")             > 0)          nStr =           inputparams["n"];
+       rotationAngle =      "plus-angle"; if (inputparams.count("rotationAngle") > 0) rotationAngle =           inputparams["rotationAngle"];
+             QMCPtsN =           5000000; if (inputparams.count("QMCPtsN")       > 0)       QMCPtsN = std::stoi(inputparams["QMCPtsN"]);
     
     for (const auto& c : nStr) {
         if (c != ',') {
             nList.push_back(int(c - '0'));
         }
+    }
+
+    rotationAngleList = {"minus-angle", "minus-angle-minus-pi-n", "minus-angle-plus-pi-n",
+                          "plus-angle",  "plus-angle-minus-pi-n",  "plus-angle-plus-pi-n"};
+    size_t rotationAngleListSize = rotationAngleList.size();
+    for (size_t i=0; i<rotationAngleListSize; i++) rotationAngleList.push_back(rotationAngleList[i] + "-minus-pi-2");
+    if (std::find(rotationAngleList.begin(), rotationAngleList.end(), rotationAngle) == rotationAngleList.end()) {
+        std::cerr << "Error: rotation angle not an available option. Aborting..." << std::endl;
+        return -1;
     }
 
     return 1;
@@ -84,7 +96,7 @@ int GenerateHSeq()
 
 static int LoadEvol(int n, interpFun& edensint)
 {
-    std::string path_in = "avgrotevoln" + std::to_string(n) + ".dat";
+    std::string path_in = "avgrotevol_m=" + std::to_string(m) + "_n=" + std::to_string(n) + "_" + rotationAngle + ".dat";
     std::ifstream file_in(path_in, std::ios_base::in);
     if (!file_in.is_open()) {
         std::cerr << "Error: unable to open evolution input file for n=" + std::to_string(n) + ". Aborting..." << std::endl;
@@ -200,7 +212,8 @@ int CalcEcc()
 
 int ExportEcc()
 {
-    std::ofstream file_out("eccavgevols.dat", std::ios_base::out);
+    std::string path_out = "eccavgevols_m=" + std::to_string(m) + "_" + rotationAngle + ".dat";
+    std::ofstream file_out(path_out, std::ios_base::out);
     if (!file_out.is_open()) {
         std::cerr << "Error: unable to open output file. Aborting..." << std::endl;
         return -1;
