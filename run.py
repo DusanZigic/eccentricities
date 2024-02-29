@@ -7,6 +7,7 @@ from re import findall
 import numpy as np
 from subprocess import call
 from shutil import rmtree, copyfile
+from time import sleep
 import matplotlib
 matplotlib.use('pdf')
 import matplotlib.pyplot as plt
@@ -41,6 +42,7 @@ def extractEvols(arguments):
     if path.exists(path.abspath("tempevols")):
         rmtree("tempevols")
     rename(path.abspath(f"TProfiles_bin_cent={arguments.centrality}"), path.abspath("tempevols"))
+    sleep(2)
     if arguments.calculation in ["jtnpsintau"]:
         bcpSrcDir  = path.expanduser("~/TRENTO-VISHNU-EBE")
         bcpSrcDir  = path.join(bcpSrcDir, f"TRENTO-VISHNU_{arguments.collsys}_{arguments.colleng}_etas_{arguments.etas}_{pParam}_{tau0Param}")
@@ -50,6 +52,7 @@ def extractEvols(arguments):
         if not path.exists(bcpDestDir): mkdir(bcpDestDir)
         for aFile in listdir(bcpSrcDir):
             copyfile(path.join(bcpSrcDir, aFile), path.join(bcpDestDir, aFile))
+    sleep(2)
 
 def runPsin(arguments):
     if not path.exists(path.abspath("psin")) or arguments.recompile:
@@ -72,6 +75,7 @@ def runEpsn(arguments):
     copyfile(path.join(psinDir, f"psin_m={arguments.m:d}.dat"), path.abspath(f"psin_m={arguments.m:d}.dat"))
     if not path.exists(path.abspath("epsn")) or arguments.recompile:
         call("g++ cepsn/*.cpp -Wall -fopenmp -O3 -o epsn", shell=True, cwd=path.abspath(""))
+    sleep(2)
     if not path.exists(path.abspath("epsn")):
         print("Error: could not compile cepsn code. Aborting...", file=stderr)
         exit()
@@ -90,6 +94,7 @@ def runAvgEvols(arguments):
     copyfile(path.join(psinDir, f"psin_m={arguments.m:d}.dat"), path.abspath(f"psin_m={arguments.m:d}.dat"))
     if not path.exists(path.abspath("avgevols")) or arguments.recompile:
         call("g++ cavgevols/*.cpp -Wall -fopenmp -O3 -o avgevols", shell=True, cwd=path.abspath(""))
+    sleep(2)
     if not path.exists(path.abspath("avgevols")):
         print("Error: could not compile cavgevols code. Aborting...", file=stderr)
         exit()
@@ -166,6 +171,7 @@ def runEccAvgEvol(arguments):
     evolFiles  = [f for f in listdir(evolsDir) if "avgrotevoln" in f]
     for aFile in evolFiles:
         copyfile(path.join(evolsDir, aFile), path.abspath(aFile))
+    sleep(2)
     nList = sorted([int(findall(r'\d+', f)[0]) for f in evolFiles])
     nList = "".join(str(n) for n in nList)
     command  = f"export OMP_NUM_THREADS={arguments.NUM_THREADS:d}; "
@@ -181,6 +187,7 @@ def runjTnPsinTau(arguments):
     gqPtsW = np.polynomial.legendre.leggauss(arguments.phiPtsN)[1]*np.pi
     gqPts  = np.vstack((gqPtsX, gqPtsW)).T
     np.savetxt(path.abspath("phigausspts.dat"), gqPts, fmt='%.12e')
+    sleep(2)
     eventN   = len(listdir(path.abspath("bcpoints")))
     command  = f"export OMP_NUM_THREADS={arguments.NUM_THREADS}; "
     command += f"./jTn --eventN={eventN:d}"
@@ -200,6 +207,7 @@ def runEpsnAvg(arguments):
         print("Error: could not find epsn file. Aborting...", file=stderr)
         exit()
     copyfile(path.join(epsnDir, "epsn.dat"), path.abspath("epsn.dat"))
+    sleep(2)
     call(f"export OMP_NUM_THREADS={arguments.NUM_THREADS}; ./epsnavg", shell=True, cwd=path.abspath(""))
     remove(path.abspath("epsn.dat"))
 
